@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Digital Slate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Oswald:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #0a0a0a;
+    --white: #f5f0e8;
+    --stripe-yellow: #f5c800;
+    --stripe-black: #111111;
+    --mid-gray: #2a2a2a;
+    --light-gray: #888;
+    --border: #333;
+    --accent: #f5c800;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-display: 'Oswald', sans-serif;
+    --font-body: 'Courier Prime', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: #111;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-body);
+    overflow: hidden;
+  }
+
+  body { padding: clamp(8px, 2vw, 24px); }
+
+  .slate-wrapper {
+    width: 100%;
+    max-width: min(96vw, 900px);
+    aspect-ratio: 4 / 3;
+    background: var(--black);
+    border: 3px solid var(--white);
+    display: flex; flex-direction: column;
+    box-shadow: 0 0 0 1px #000, 0 20px 80px rgba(0,0,0,.9);
+    overflow: hidden;
+  }
+
+  /* ── CLAPPER ── */
+  .clapper { width: 100%; display: flex; flex-direction: column; flex-shrink: 0; }
+
+  .clapper-top {
+    height: clamp(20px, 5%, 38px);
+    overflow: hidden;
+  }
+
+  .clapper-stripes {
+    width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--stripe-black) 0px, var(--stripe-black) 14px,
+      var(--stripe-yellow) 14px, var(--stripe-yellow) 28px
+    );
+  }
+
+  .clapper-hinge {
+    height: clamp(6px, 1.5%, 12px);
+    background: linear-gradient(to bottom, #444, #222, #444);
+    border-top: 1px solid #666;
+    border-bottom: 1px solid #111;
+  }
+
+  /* ── SLATE BODY ── */
+  .slate-body { flex: 1; display: grid; grid-template-rows: auto 1fr auto; min-height: 0; }
+
+  /* ── TIMECODE BAR ── */
+  .timecode-bar {
+    background: var(--mid-gray);
+    border-bottom: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: clamp(4px, 1.2%, 10px) clamp(8px, 2%, 18px);
+    gap: 8px;
+  }
+
+  .tc-left { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
+
+  .tc-label {
+    font-family: var(--font-display);
+    font-size: clamp(7px, 1.6vw, 13px);
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .sync-status {
+    font-family: var(--font-mono);
+    font-size: clamp(6px, 1.1vw, 9px);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+    transition: color 0.4s;
+  }
+
+  .sync-status.synced  { color: #4caf50; }
+  .sync-status.syncing { color: var(--accent); }
+  .sync-status.error   { color: #e04040; }
+
+  .tc-display {
+    font-family: var(--font-mono);
+    font-size: clamp(18px, 5vw, 52px);
+    color: var(--white);
+    letter-spacing: 0.05em;
+    flex: 1;
+    text-align: center;
+    user-select: none;
+  }
+
+  .tc-fps-badge {
+    font-family: var(--font-display);
+    font-size: clamp(7px, 1.5vw, 12px);
+    color: var(--black);
+    background: var(--accent);
+    padding: 2px 8px;
+    border-radius: 2px;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    flex-shrink: 0;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+  }
+  .tc-fps-badge:hover { opacity: 0.82; }
+
+  /* ── FIELDS GRID ── */
+  .fields-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    min-height: 0;
+  }
+
+  .roll-scene-take {
+    grid-column: 1 / 2; grid-row: 1 / 3;
+    display: flex; flex-direction: column;
+    border-right: 2px solid var(--accent);
+  }
+
+  .rst-item {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    border-bottom: 1px solid var(--border);
+    padding: clamp(4px,1%,12px) clamp(6px,1.5%,14px);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .rst-item:last-child { border-bottom: none; }
+  .rst-item:hover { background: rgba(255,255,255,0.03); }
+
+  .rst-label {
+    font-family: var(--font-display);
+    font-size: clamp(7px, 1.6vw, 13px);
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  .rst-value {
+    font-family: var(--font-display);
+    font-size: clamp(28px, 8vw, 72px);
+    font-weight: 700;
+    color: var(--white);
+    line-height: 1;
+    text-align: center;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .info-fields {
+    grid-column: 2 / 4; grid-row: 1 / 3;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(4, 1fr);
+  }
+
+  .info-cell {
+    display: flex; flex-direction: column; justify-content: center;
+    padding: clamp(4px,1.2%,12px) clamp(8px,2%,16px);
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+    overflow: hidden;
+  }
+  .info-cell:hover { background: rgba(255,255,255,0.03); }
+  .info-cell:nth-child(2n)       { border-right: none; }
+  .info-cell:nth-last-child(-n+2){ border-bottom: none; }
+
+  .info-label {
+    font-family: var(--font-display);
+    font-size: clamp(6px, 1.4vw, 11px);
+    color: var(--accent);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 1px;
+    white-space: nowrap;
+  }
+
+  .info-value {
+    font-family: var(--font-body);
+    font-size: clamp(11px, 2.4vw, 20px);
+    color: var(--white);
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .info-value.placeholder { color: var(--light-gray); font-weight: 400; font-style: italic; }
+
+  /* ── BOTTOM BAR ── */
+  .bottom-bar {
+    display: flex; align-items: stretch;
+    border-top: 2px solid var(--accent);
+    background: var(--mid-gray);
+    flex-shrink: 0;
+  }
+
+  .bottom-cell {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: clamp(3px,.8%,8px) clamp(6px,1.5%,14px);
+    border-right: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .bottom-cell:last-child { border-right: none; }
+  .bottom-cell:hover { background: rgba(255,255,255,0.04); }
+
+  .bottom-label {
+    font-family: var(--font-display);
+    font-size: clamp(6px, 1.3vw, 10px);
+    color: var(--accent);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .bottom-value {
+    font-family: var(--font-mono);
+    font-size: clamp(11px, 2.4vw, 20px);
+    color: var(--white);
+    font-weight: 700;
+  }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+    padding: 16px;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: #1a1a1a;
+    border: 2px solid var(--accent);
+    width: 100%; max-width: 420px;
+    padding: 24px; border-radius: 4px;
+    transform: translateY(12px);
+    transition: transform 0.2s;
+    box-shadow: 0 30px 80px rgba(0,0,0,.9);
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal-title {
+    font-family: var(--font-display);
+    font-size: 18px; color: var(--accent);
+    letter-spacing: 0.2em; text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .modal input, .modal select {
+    width: 100%;
+    background: #0f0f0f;
+    border: 1px solid #444;
+    color: var(--white);
+    font-family: var(--font-body);
+    font-size: 20px;
+    padding: 10px 14px; border-radius: 2px;
+    outline: none; transition: border-color 0.2s;
+    margin-bottom: 16px;
+  }
+  .modal input:focus, .modal select:focus { border-color: var(--accent); }
+  .modal select option { background: #1a1a1a; }
+
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+  .btn-cancel, .btn-save {
+    font-family: var(--font-display);
+    font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 9px 22px; border: none; border-radius: 2px;
+    cursor: pointer; font-weight: 700;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn-cancel { background: #333; color: var(--light-gray); }
+  .btn-save   { background: var(--accent); color: var(--black); }
+  .btn-cancel:hover { opacity: 0.8; }
+  .btn-save:hover   { opacity: 0.9; }
+  .btn-save:active, .btn-cancel:active { transform: scale(0.97); }
+
+  @keyframes flash {
+    0%,100% { background: transparent; }
+    50%      { background: rgba(245,200,0,0.12); }
+  }
+  .flashed { animation: flash 0.3s ease; }
+
+  /* Portrait phone */
+  @media (max-aspect-ratio: 3/4) {
+    .slate-wrapper { aspect-ratio: 3 / 4; max-width: min(98vw, 500px); }
+    .fields-grid { grid-template-columns: 1fr; grid-template-rows: auto auto; }
+    .roll-scene-take {
+      grid-column: 1/2; grid-row: 1/2;
+      flex-direction: row;
+      border-right: none; border-bottom: 2px solid var(--accent);
+    }
+    .rst-item { border-bottom: none; border-right: 1px solid var(--border); }
+    .rst-item:last-child { border-right: none; }
+    .rst-value { font-size: clamp(22px, 9vw, 54px); }
+    .info-fields {
+      grid-column: 1/2; grid-row: 2/3;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: repeat(4, 1fr);
+    }
+  }
+
+  @media (max-height: 500px) {
+    .clapper-top { height: clamp(14px, 4%, 24px); }
+    .rst-value { font-size: clamp(18px, 5vw, 44px); }
+  }
+</style>
+</head>
+<body>
+
+<div class="slate-wrapper">
+  <div class="clapper">
+    <div class="clapper-top"><div class="clapper-stripes"></div></div>
+    <div class="clapper-hinge"></div>
+  </div>
+
+  <div class="slate-body">
+
+    <!-- TIMECODE BAR -->
+    <div class="timecode-bar">
+      <div class="tc-left">
+        <span class="tc-label">TOD · FREE RUN</span>
+        <span class="sync-status syncing" id="syncStatus">● SYNCING…</span>
+      </div>
+      <div class="tc-display" id="tcDisplay">--:--:--:--</div>
+      <div class="tc-fps-badge" id="fpsBadge" onclick="openModal('fps')">23.976 fps</div>
+    </div>
+
+    <!-- FIELDS GRID -->
+    <div class="fields-grid">
+      <div class="roll-scene-take">
+        <div class="rst-item" onclick="openModal('roll')">
+          <div class="rst-label">Roll</div>
+          <div class="rst-value" id="rollVal">A1</div>
+        </div>
+        <div class="rst-item" onclick="openModal('scene')">
+          <div class="rst-label">Scene</div>
+          <div class="rst-value" id="sceneVal">1</div>
+        </div>
+        <div class="rst-item" onclick="openModal('take')">
+          <div class="rst-label">Take</div>
+          <div class="rst-value" id="takeVal">1</div>
+        </div>
+      </div>
+
+      <div class="info-fields">
+        <div class="info-cell" onclick="openModal('production')">
+          <div class="info-label">Production</div>
+          <div class="info-value placeholder" id="productionVal">— tap to edit —</div>
+        </div>
+        <div class="info-cell" onclick="openModal('director')">
+          <div class="info-label">Director</div>
+          <div class="info-value placeholder" id="directorVal">— tap to edit —</div>
+        </div>
+        <div class="info-cell" onclick="openModal('dp')">
+          <div class="info-label">D.P.</div>
+          <div class="info-value placeholder" id="dpVal">— tap to edit —</div>
+        </div>
+        <div class="info-cell" onclick="openModal('camera')">
+          <div class="info-label">Camera</div>
+          <div class="info-value" id="cameraVal">A</div>
+        </div>
+        <div class="info-cell" onclick="openModal('day_night')">
+          <div class="info-label">Day / Night</div>
+          <div class="info-value" id="dayNightVal">DAY</div>
+        </div>
+        <div class="info-cell" onclick="openModal('int_ext')">
+          <div class="info-label">INT / EXT</div>
+          <div class="info-value" id="intExtVal">INT</div>
+        </div>
+        <div class="info-cell" onclick="openModal('notes')">
+          <div class="info-label">Notes</div>
+          <div class="info-value placeholder" id="notesVal">—</div>
+        </div>
+        <div class="info-cell" onclick="openModal('ep')">
+          <div class="info-label">Episode</div>
+          <div class="info-value placeholder" id="epVal">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM BAR -->
+    <div class="bottom-bar">
+      <div class="bottom-cell" onclick="openModal('date')">
+        <div class="bottom-label">Date</div>
+        <div class="bottom-value" id="dateVal"
+             style="font-family:var(--font-body);font-size:clamp(10px,2.2vw,18px);"></div>
+      </div>
+      <div class="bottom-cell" onclick="openModal('fps')">
+        <div class="bottom-label">Frame Rate</div>
+        <div class="bottom-value" id="fpsVal">23.976</div>
+      </div>
+    </div>
+
+  </div><!-- /slate-body -->
+</div><!-- /slate-wrapper -->
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Edit Field</div>
+    <div id="modalInputContainer"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save"   onclick="saveModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+const state = {
+  roll: 'A1', scene: '1', take: '1',
+  production: '', director: '', dp: '',
+  camera: 'A', day_night: 'DAY', int_ext: 'INT',
+  notes: '', ep: '',
+  date: '', fps: '23.976'
+};
+
+const FIELDS = {
+  roll:       { label: 'Roll',                    type: 'text',   placeholder: 'e.g. A1' },
+  scene:      { label: 'Scene',                   type: 'text',   placeholder: 'e.g. 12A' },
+  take:       { label: 'Take',                    type: 'number', placeholder: 'e.g. 3' },
+  production: { label: 'Production',              type: 'text',   placeholder: 'Project title' },
+  director:   { label: 'Director',                type: 'text',   placeholder: 'Director name' },
+  dp:         { label: 'Director of Photography', type: 'text',   placeholder: 'D.P. name' },
+  camera:     { label: 'Camera',                  type: 'text',   placeholder: 'e.g. A, B' },
+  day_night:  { label: 'Day / Night',             type: 'select', options: ['DAY','NIGHT'] },
+  int_ext:    { label: 'INT / EXT',               type: 'select', options: ['INT','EXT','INT/EXT','EXT/INT'] },
+  notes:      { label: 'Notes',                   type: 'text',   placeholder: 'MOS, VFX, SFX…' },
+  ep:         { label: 'Episode',                 type: 'text',   placeholder: 'e.g. 104' },
+  date:       { label: 'Date',                    type: 'date' },
+  fps:        { label: 'Frame Rate',              type: 'select',
+                options: ['23.976','24','25','29.97','30','47.95','48','50','59.94','60'] },
+};
+
+const PLACEHOLDER_FIELDS = new Set(['production','director','dp','notes','ep']);
+
+// ═══════════════════════════════════════════════
+//  NTP SYNC
+//
+//  Browsers cannot reach UDP NTP directly.
+//  We use WorldTimeAPI (https://worldtimeapi.org)
+//  which itself synchronises against authoritative
+//  USNO / US Navy NTP pools.
+//
+//  Strategy:
+//    1. Measure round-trip time (RTT) of the HTTP call.
+//    2. Assume server-side latency is symmetric →
+//       server time at response arrival ≈ unixtime + RTT/2.
+//    3. Store offset = serverMs - performance.now()
+//       so every subsequent tick is corrected without
+//       another network request.
+//    4. Re-sync every 5 minutes to correct any drift.
+// ═══════════════════════════════════════════════
+
+let timeOffset  = 0;      // ms: corrected_UTC = performance.now() + timeOffset
+let syncOk      = false;
+
+const NTP_ENDPOINTS = [
+  'https://worldtimeapi.org/api/timezone/Etc/UTC',
+  'https://worldtimeapi.org/api/ip',
+];
+
+async function syncNTP() {
+  setStatus('syncing', '● SYNCING TO USNO/NTP…');
+  for (const url of NTP_ENDPOINTS) {
+    try {
+      const t0  = performance.now();
+      const res = await fetch(url, { cache: 'no-store' });
+      const t1  = performance.now();
+      if (!res.ok) continue;
+
+      const json   = await res.json();
+      // unixtime: integer UTC seconds; utc_datetime has sub-second if available
+      let serverMs;
+      if (json.unixtime) {
+        serverMs = json.unixtime * 1000;
+      } else {
+        serverMs = new Date(json.utc_datetime).getTime();
+      }
+
+      const rtt      = t1 - t0;               // round-trip ms
+      const localNow = performance.now();
+      // Best estimate: server clock at the moment we received the response
+      const serverAtRecv = serverMs + rtt / 2;
+      timeOffset = serverAtRecv - localNow;
+      syncOk     = true;
+
+      setStatus('synced', '● SYNCED · USNO / US NAVY NTP');
+      return;
+    } catch (_) { /* try next */ }
+  }
+  // All failed — fall back to device clock, flag it
+  syncOk = false;
+  setStatus('error', '● SYNC FAILED · DEVICE CLOCK');
+}
+
+function setStatus(cls, text) {
+  const el = document.getElementById('syncStatus');
+  el.className = 'sync-status ' + cls;
+  el.textContent = text;
+}
+
+// Initial sync + re-sync every 5 minutes
+syncNTP();
+setInterval(syncNTP, 5 * 60 * 1000);
+
+// ═══════════════════════════════════════════════
+//  FREE-RUN TIMECODE ENGINE
+//
+//  TOD timecode = wall-clock time expressed as HH:MM:SS:FF
+//  It runs continuously regardless of recording state,
+//  advancing frame-by-frame against real UTC time.
+//
+//  Drop-frame separator (;) used for 29.97 and 59.94
+//  to correctly signal DF timecode to editorial.
+// ═══════════════════════════════════════════════
+
+function utcNowMs() {
+  // Return best-estimate UTC epoch in milliseconds
+  return syncOk
+    ? performance.now() + timeOffset
+    : Date.now();
+}
+
+function renderTC() {
+  const nowMs  = utcNowMs();
+  const fps    = parseFloat(state.fps);
+  const fpsi   = Math.round(fps);
+  const isDF   = (state.fps === '29.97' || state.fps === '59.94');
+  const sep    = isDF ? ';' : ':';
+
+  // Milliseconds elapsed since midnight UTC
+  let msInDay  = nowMs % 86400000;
+  if (msInDay < 0) msInDay += 86400000;
+
+  const hours   = Math.floor(msInDay / 3600000);
+  const minutes = Math.floor((msInDay % 3600000) / 60000);
+  const seconds = Math.floor((msInDay % 60000) / 1000);
+  const subMs   = msInDay % 1000;
+
+  // Frame number within the current second
+  const frames  = Math.min(Math.floor((subMs / 1000) * fps), fpsi - 1);
+
+  document.getElementById('tcDisplay').textContent =
+    String(hours).padStart(2,'0')   + ':' +
+    String(minutes).padStart(2,'0') + ':' +
+    String(seconds).padStart(2,'0') + sep +
+    String(frames).padStart(2,'0');
+}
+
+// Drive with requestAnimationFrame — smooth, no timer drift
+(function loop() {
+  renderTC();
+  requestAnimationFrame(loop);
+})();
+
+// ═══════════════════════════════════════════════
+//  DATE INIT
+// ═══════════════════════════════════════════════
+(function() {
+  state.date = new Date().toISOString().split('T')[0];
+  renderDate();
+})();
+
+function renderDate() {
+  const d = state.date ? new Date(state.date + 'T12:00:00') : new Date();
+  document.getElementById('dateVal').textContent =
+    d.toLocaleDateString('en-US', { month:'short', day:'2-digit', year:'numeric' });
+}
+
+// ═══════════════════════════════════════════════
+//  FIELD RENDERING
+// ═══════════════════════════════════════════════
+const FIELD_IDS = {
+  roll:'rollVal', scene:'sceneVal', take:'takeVal',
+  production:'productionVal', director:'directorVal', dp:'dpVal',
+  camera:'cameraVal', day_night:'dayNightVal', int_ext:'intExtVal',
+  notes:'notesVal', ep:'epVal', fps:'fpsVal'
+};
+
+function render(key) {
+  if (key === 'date') { renderDate(); return; }
+
+  if (key === 'fps') {
+    document.getElementById('fpsVal').textContent   = state.fps;
+    document.getElementById('fpsBadge').textContent = state.fps + ' fps';
+    return;
+  }
+
+  const el = document.getElementById(FIELD_IDS[key]);
+  if (!el) return;
+  const val     = state[key];
+  const isEmpty = !val;
+
+  if (PLACEHOLDER_FIELDS.has(key)) {
+    el.textContent = isEmpty ? '—' : val;
+    el.classList.toggle('placeholder', isEmpty);
+  } else {
+    el.textContent = val || '—';
+    el.classList.remove('placeholder');
+  }
+
+  // Flash to confirm edit
+  el.classList.remove('flashed');
+  void el.offsetWidth;
+  el.classList.add('flashed');
+}
+
+// ═══════════════════════════════════════════════
+//  MODAL
+// ═══════════════════════════════════════════════
+let currentField = null;
+let modalInput   = null;
+
+function openModal(key) {
+  currentField = key;
+  const cfg = FIELDS[key];
+  document.getElementById('modalTitle').textContent = cfg.label;
+  const container = document.getElementById('modalInputContainer');
+  container.innerHTML = '';
+
+  if (cfg.type === 'select') {
+    const sel = document.createElement('select');
+    cfg.options.forEach(opt => {
+      const o = document.createElement('option');
+      o.value = opt; o.textContent = opt;
+      if (state[key] === opt) o.selected = true;
+      sel.appendChild(o);
+    });
+    container.appendChild(sel);
+    modalInput = sel;
+  } else {
+    const inp = document.createElement('input');
+    inp.type        = cfg.type === 'number' ? 'text' : (cfg.type || 'text');
+    if (cfg.type === 'number') inp.inputMode = 'numeric';
+    inp.value       = state[key] || '';
+    inp.placeholder = cfg.placeholder || '';
+    container.appendChild(inp);
+    modalInput = inp;
+    setTimeout(() => inp.focus(), 80);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') saveModal(); });
+  }
+
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  currentField = null;
+  modalInput   = null;
+}
+
+function closeModalOutside(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+}
+
+function saveModal() {
+  if (!currentField || !modalInput) { closeModal(); return; }
+  let val = modalInput.tagName === 'SELECT'
+    ? modalInput.options[modalInput.selectedIndex].value
+    : modalInput.value.trim();
+  if (currentField === 'take') val = String(parseInt(val) || 1);
+  state[currentField] = val;
+  render(currentField);
+  closeModal();
+}
+
+// ═══════════════════════════════════════════════
+//  SCREEN WAKE LOCK — keep display on during shoot
+// ═══════════════════════════════════════════════
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try { await navigator.wakeLock.request('screen'); } catch(_) {}
+  }
+}
+
+requestWakeLock();
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    requestWakeLock();
+    syncNTP(); // re-sync whenever the tab returns to foreground
+  }
+});
+</script>
+</body>
+</html>
